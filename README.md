@@ -2,7 +2,9 @@
 
 cctracker is a music tracker program written for the CC: Tweaked mod for Minecraft.
 
-You can easily download it on your computercraft computer with this command:
+![cctracker_example](https://github.com/James-Dumas/cctracker/blob/master/cctracker.png)
+
+You can easily download it on your ComputerCraft computer with this command:
 
 `pastebin get 290rwTEd cctracker`
 
@@ -54,7 +56,8 @@ The instrument values correspond the the 16 note block instruments in the latest
 * shift + M - mute/unmute current channel
 * shift + [0123456789ABCDEF] - select instrument
 * various keyboard keys - enter note / instrument / volume
-  * A key is the lowest F#, Z key is G, S key is G#, X key is A, etc.
+  * the 'A' key is the lowest F#, 'Z' key is G, 'S' key is G#, 'X' key is A, etc.
+  * the next octave starts on the '1' key on F#, continuing the same pattern.
 #### frames panel
 * up/down - change frame index
 * left/right - change frame at current index
