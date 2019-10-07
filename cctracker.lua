@@ -209,9 +209,13 @@ function updateSelection()
 end
 
 function clearSelection()
-    selection = {}
-    options.selecting = false
-    panels.editor.needsRedraw = true
+    if options.selecting then
+        options.currentRow = selection.ir
+        options.currentChannel = selection.ic
+        selection = {}
+        options.selecting = false
+        panels.editor.needsRedraw = true
+    end
 end
 
 function stepRow(up)
@@ -512,10 +516,8 @@ function init()
                     local oldFrameNum = options.frames
                     options.frames = math.min(options.maxFrames, math.max(options.minFrames, tonumber(options.editingFrames)))
                     if options.frames > oldFrameNum then
-                        for i = oldFrameNum + 1, options.frames do
-                            if song.order[i - 1] == nil then
-                                song.order[i - 1] = 0
-                            end
+                        for i = oldFrameNum, options.frames - 1 do
+                            song.order[i] = 0
                         end
                     end
                     panels.header.needsRedraw = true
@@ -819,12 +821,13 @@ function init()
                     elseif param == keys.s then
                         if options.selecting then
                             clearSelection()
+                            self:autoSetCursorPos()
                         else
                             options.selecting = true
                             options.currentItem = "note"
-                            self:autoSetCursorPos()
                             selection.ir = options.currentRow
                             selection.ic = options.currentChannel
+                            self:autoSetCursorPos()
                             updateSelection()
                         end
                     end
@@ -858,6 +861,14 @@ function init()
                                 end
                             end
                             clearSelection()
+                        elseif param == keys.delete or param == keys.backspace then
+                            local frame = song:getFrameAt(options.currentFrame)
+                            for r = selection.r1, selection.r2 do
+                                for c = selection.c1, selection.c2 do
+                                    frame[r][c] = nil
+                                end
+                            end
+                            clearSelection()
                         elseif param == keys.a then
                             selection.ir = 1
                             selection.ic = 1
@@ -871,6 +882,61 @@ function init()
                             options.currentRow = options.rows
                             updateSelection()
                             self:autoSetCursorPos()
+                        elseif param == keys.r then
+                            local frame = song:getFrameAt(options.currentFrame)
+                            for r = selection.r1, selection.r2 do
+                                for c = selection.c1, selection.c2 do
+                                    local note = frame[r][c]       
+                                    if note ~= nil then
+                                        note[2] = options.currentInstrument
+                                    end
+                                end
+                            end
+                            updateSelection()
+                        elseif param == keys.equals then
+                            local frame = song:getFrameAt(options.currentFrame)
+                            for r = selection.r1, selection.r2 do
+                                for c = selection.c1, selection.c2 do
+                                    local note = frame[r][c]       
+                                    if note ~= nil and note[1] < 24 then
+                                        note[1] = note[1] + 1
+                                    end
+                                end
+                            end
+                            updateSelection()
+                        elseif param == keys.minus then
+                            local frame = song:getFrameAt(options.currentFrame)
+                            for r = selection.r1, selection.r2 do
+                                for c = selection.c1, selection.c2 do
+                                    local note = frame[r][c]       
+                                    if note ~= nil and note[1] > 0 then
+                                        note[1] = note[1] - 1
+                                    end
+                                end
+                            end
+                            updateSelection()
+                        elseif param == keys.rightBracket then
+                            local frame = song:getFrameAt(options.currentFrame)
+                            for r = selection.r1, selection.r2 do
+                                for c = selection.c1, selection.c2 do
+                                    local note = frame[r][c]       
+                                    if note ~= nil and note[1] <= 12 then
+                                        note[1] = note[1] + 12
+                                    end
+                                end
+                            end
+                            updateSelection()
+                        elseif param == keys.leftBracket then
+                            local frame = song:getFrameAt(options.currentFrame)
+                            for r = selection.r1, selection.r2 do
+                                for c = selection.c1, selection.c2 do
+                                    local note = frame[r][c]       
+                                    if note ~= nil and note[1] >= 12 then
+                                        note[1] = note[1] - 12
+                                    end
+                                end
+                            end
+                            updateSelection()
                         end
                     else
                         if param == keys.up then
@@ -899,7 +965,9 @@ function init()
                             self:autoSetCursorPos()
                         elseif param == keys.backspace or param == keys.delete then
                             song:getFrameAt(options.currentFrame)[options.currentRow][options.currentChannel] = nil
-                            stepRow()
+                            if param == keys.delete then
+                                stepRow()
+                            end
                             self.needsRedraw = true
                         else
                             if options.currentItem == "note" then
@@ -1011,6 +1079,24 @@ function init()
                             song.frames[song.order[options.currentFrame]] = newFrame()
                         end
                         self.needsRedraw = true
+                        panels.editor.needsRedraw = true
+                    elseif param == keys.i and options.frames < options.maxFrames then
+                        for i = options.frames - 1, options.currentFrame, -1 do
+                            song.order[i + 1] = song.order[i]
+                        end
+                        song.order[options.currentFrame] = 0
+                        options.frames = options.frames + 1
+                        self.needsRedraw = true
+                        panels.header.needsRedraw = true
+                        panels.editor.needsRedraw = true
+                    elseif param == keys.delete and options.frames > options.minFrames then
+                        for i = options.currentFrame, options.frames - 2 do
+                            song.order[i] = song.order[i + 1]
+                        end
+                        song.order[options.frames - 1] = nil
+                        options.frames = options.frames - 1
+                        self.needsRedraw = true
+                        panels.header.needsRedraw = true
                         panels.editor.needsRedraw = true
                     end
                 end

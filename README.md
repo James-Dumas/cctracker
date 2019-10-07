@@ -45,19 +45,25 @@ The instrument values correspond the the 16 note block instruments in the latest
 * arrow keys - move cursor
 * shift + space - play from first frame
 * shift + S - enter selection mode
-  * (selection mode):
+  * (In selection mode):
   * arrow keys - move cursor
   * shift + S - leave selection mode
+  * delete/backspace - delete selection
   * C - copy selection to clipboard
   * X - cut selection to clipboard
   * Z - select entire channel
   * A - select entire frame
+  * R - replace instrument with current instrument
+  * equals/minus - transpose selection up/down half step
+  * right/left bracket - transpose selection up/down octave
 * shift + V - paste clipboard at cursor
 * shift + M - mute/unmute current channel
 * shift + [0123456789ABCDEF] - select instrument
 * various keyboard keys - enter note / instrument / volume
   * the 'A' key is the lowest F#, 'Z' key is G, 'S' key is G#, 'X' key is A, etc.
   * the next octave starts on the '1' key on F#, continuing the same pattern.
+* backspace - delete note
+* delete - delete note and move down a row
 #### frames panel
 * up/down - change frame index
 * left/right - change frame at current index
