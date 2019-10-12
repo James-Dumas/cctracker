@@ -1067,10 +1067,10 @@ function init()
                         self.needsRedraw = true
                         panels.editor.needsRedraw = true
                     elseif param == keys.left and song.order[options.currentFrame] > 0 then
-                        if isEmptyNestedTable(song.frames[song.order[options.currentFrame]]) then
-                            song.frames[song.order[options.currentFrame]] = nil
-                        end
                         song.order[options.currentFrame] = song.order[options.currentFrame] - 1
+                        if song.frames[song.order[options.currentFrame]] == nil then
+                            song.frames[song.order[options.currentFrame]] = newFrame()
+                        end
                         self.needsRedraw = true
                         panels.editor.needsRedraw = true
                     elseif param == keys.right and song.order[options.currentFrame] < 255 then
