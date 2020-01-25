@@ -60,6 +60,9 @@ options = {
     name = "New Song",
     filename = "",
     tempFilename = "",
+    exportFilename = "",
+    artistName = "",
+    exportExt = ".bba",
 
     exit = false,
     shift = false,
@@ -355,7 +358,31 @@ function loadSong(filename)
     options.currentItem = "note"
 end
 
-function exportSong()
+function exportSong(filename)
+    local outfile = io.open(filename, "w")
+    outfile:write("brownbricksaudio\n")
+    outfile:write(options.name .. "\n")
+    outfile:write(options.artistName .. "\n")
+    outfile:write(options.speed .. "")
+    local emptyCount = 0
+    for i = 0, options.frames - 1 do
+        local frame = song.frames[song.order[i]]
+        for ri, row in pairs(frame) do
+            if not isEmptyNestedTable(row) then
+                if emptyCount > 0 then
+                    outfile:write("\n-" .. emptyCount)
+                    emptyCount = 0
+                end
+                outfile:write("\n")
+                for ci, note in pairs(frame[ri]) do
+                    outfile:write(zeroPad(note[1], 2) .. zeroPad(note[2], 2) .. zeroPad(note[3], 2))
+                end
+            else
+                emptyCount = emptyCount + 1
+            end
+        end
+    end
+    io.close(outfile)
 end
 
 function isOkFilename(filename)
@@ -635,7 +662,7 @@ function init()
                 elseif x == 12 then -- EXPORT
                     if event == "key" then
                         if param == keys.enter or param == keys.space then
-                            exportSong()
+                            panels.exportFile:gotoDefaultPosition()
                         elseif param == keys.left then
                             self.window.setCursorPos(7, 2)
                         elseif param == keys.right then
@@ -1126,7 +1153,7 @@ function init()
             if isOkFilename(options.filename) then
                 self.window.setCursorPos(17, 11)
             else
-                self.window.setCursorPos(11, 9)
+                self.window.setCursorPos(11 + string.len(options.filename), 9)
             end
             self.needsRedraw = true
         end,
@@ -1159,7 +1186,7 @@ function init()
                     elseif param == keys.down then
                         self.window.setCursorPos(17, 11)
                     end
-                elseif event == "char" and x < 51 then
+                elseif event == "char" and x < 50 then
                     options.filename = options.filename .. param
                     self.window.setCursorPos(x + 1, y)
                     self.needsRedraw = true
@@ -1249,7 +1276,7 @@ function init()
                     elseif param == keys.down then
                         self.window.setCursorPos(17, 11)
                     end
-                elseif event == "char" and x < 51 then
+                elseif event == "char" and x < 50 then
                     options.tempFilename = options.tempFilename .. param
                     self.window.setCursorPos(x + 1, y)
                     self.needsRedraw = true
@@ -1287,6 +1314,118 @@ function init()
             end
         end
     }
+    panels.exportFile = {
+        window = window.create(term.current(), 1, 1, 51, 19),
+        needsRedraw = false,
+        goBack = function(self)
+            self.window.setVisible(false)
+            self.window.clear()
+            panels.header.window.setVisible(true)
+            panels.editor.window.setVisible(true)
+            panels.frames.window.setVisible(true)
+            panels.header.needsRedraw = true
+            panels.editor.needsRedraw = true
+            panels.frames.needsRedraw = true
+            panels.header:gotoDefaultPosition()
+        end,
+        gotoDefaultPosition = function(self)
+            options.panel = "exportFile"
+            panels.header.window.setVisible(false)
+            panels.editor.window.setVisible(false)
+            panels.frames.window.setVisible(false)
+            self.window.setVisible(true)
+            if string.len(options.artistName) == 0 then
+                self.window.setCursorPos(10 + string.len(options.artistName), 8)
+            elseif isOkFilename(options.exportFilename) then
+                self.window.setCursorPos(16, 12)
+            else
+                self.window.setCursorPos(13 + string.len(options.exportFilename), 10)
+            end
+            self.needsRedraw = true
+        end,
+        redraw = function(self)
+            self.window.clear()
+            self.window.setCursorBlink(false)
+            self.window.setCursorPos(2, 8)
+            self.window.write("Artist: " .. options.artistName)
+            self.window.setCursorPos(2, 10)
+            self.window.write("Export as: " .. options.exportFilename)
+            self.window.setCursorPos(51 - string.len(options.exportExt), 10)
+            self.window.write(options.exportExt)
+            self.window.setCursorPos(16, 12)
+            local colorString = "555555"
+            if(not isOkFilename(options.exportFilename)) then
+                colorString = "888888"
+            end
+            self.window.blit("EXPORT", colorString, "ffffff")
+            self.window.setCursorPos(32, 12)
+            self.window.blit("BACK", "3333", "ffff")
+            self.window.setCursorBlink(true)
+        end,
+        doAction = function(self, event, param)
+            local x, y = self.window.getCursorPos()
+            if y == 8 then
+                if event == "key" then
+                    if param == keys.backspace then
+                        local ok
+                        options.artistName, ok = deleteFromString(options.artistName)
+                        if ok then
+                            self.window.setCursorPos(x - 1, y)
+                            self.needsRedraw = true
+                        end
+                    elseif param == keys.down then
+                        self.window.setCursorPos(13 + string.len(options.exportFilename), 10)
+                    end
+                elseif event == "char" and x < 50 then
+                    options.artistName = options.artistName .. param
+                    self.window.setCursorPos(x + 1, y)
+                    self.needsRedraw = true
+                end
+            elseif y == 10 then
+                if event == "key" then
+                    if param == keys.backspace then
+                        local ok
+                        options.exportFilename, ok = deleteFromString(options.exportFilename)
+                        if ok then
+                            self.window.setCursorPos(x - 1, y)
+                            self.needsRedraw = true
+                        end
+                    elseif param == keys.up then
+                        self.window.setCursorPos(10 + string.len(options.artistName), 8)
+                    elseif param == keys.down then
+                        self.window.setCursorPos(16, 12)
+                    end
+                elseif event == "char" and x < 50 - string.len(options.exportExt) then
+                    options.exportFilename = options.exportFilename .. param
+                    self.window.setCursorPos(x + 1, y)
+                    self.needsRedraw = true
+                end
+            else -- y = 12
+                if x == 16 then -- EXPORT
+                    if event == "key" then
+                        if (param == keys.enter or param == keys.space) and isOkFilename(options.exportFilename) then
+                            exportSong(options.exportFilename .. options.exportExt)
+                            self:goBack()
+                        elseif param == keys.right then
+                            self.window.setCursorPos(32, 12)
+                        elseif param == keys.up then
+                            self.window.setCursorPos(13 + string.len(options.exportFilename), 10)
+                        end
+                    end
+                else -- BACK
+                    if event == "key" then
+                        if param == keys.enter or param == keys.space then
+                            self:goBack()
+                        elseif param == keys.left then
+                            self.window.setCursorPos(16, 12)
+                        elseif param == keys.up then
+                            self.window.setCursorPos(13 + string.len(options.exportFilename), 10)
+                        end
+                    end
+                end
+            end
+        end
+    }
 
     -- check available instruments
     for i, instr in ipairs(instruments) do
@@ -1296,6 +1435,7 @@ function init()
     -- setup starting display
     panels.saveFile.window.setVisible(false)
     panels.loadFile.window.setVisible(false)
+    panels.exportFile.window.setVisible(false)
 
     term.clear()
     panels.header:gotoDefaultPosition()
