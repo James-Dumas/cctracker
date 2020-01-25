@@ -6,7 +6,7 @@ cctracker is a music tracker program written for the CC: Tweaked mod for Minecra
 
 You can easily download it on your ComputerCraft computer with this command:
 
-`pastebin get Dzthsgwe cctracker`
+`pastebin get znXRScN7 cctracker`
 
 ## Manual
 Songs are made up of frames, and frames are made up of rows and channels.
