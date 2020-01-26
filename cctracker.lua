@@ -179,7 +179,7 @@ end
 function playNotes(notes)
     for i, note in pairs(notes) do
         if not muted[i] and instruments[note[2]][4] then
-            speaker.playNote(instruments[note[2]][1], note[3] / 15, note[1])
+            speaker.playNote(instruments[note[2]][1], (note[3] + 1) / 16, note[1])
         end
     end
 end
@@ -385,26 +385,8 @@ function exportSong(filename)
     io.close(outfile)
 end
 
-function isOkFilename(filename)
-    if string.len(filename) == 0 then
-        return false
-    end
-    local ok = true
-    for i = 1, string.len(filename) do
-        local char = string.sub(filename, i, i)
-        ok = ok and char ~= " " and char ~= "/" and char ~= "\\"
-    end
-    return ok
-end
-
-function fileExists(filename)
-    local file = io.open(filename, "r")
-    if file ~= nil then 
-        io.close(file) 
-        return true 
-    else 
-        return false 
-    end
+function isOkFilename(filepath)
+    return string.len(filepath) > 0 and string.match(filepath, " ") == nil and string.sub(filepath, -1) ~= "/" and not fs.isDir(filepath)
 end
 
 function playSong()
@@ -1254,7 +1236,7 @@ function init()
             self.window.write("Load file: " .. options.tempFilename)
             self.window.setCursorPos(17, 11)
             local colorString = "5555"
-            if(not isOkFilename(options.tempFilename) or not fileExists(options.tempFilename)) then
+            if(not isOkFilename(options.tempFilename) or not fs.exists(options.tempFilename)) then
                 colorString = "8888"
             end
             self.window.blit("LOAD", colorString, "ffff")
@@ -1284,7 +1266,7 @@ function init()
             else -- y = 11
                 if x == 17 then -- LOAD
                     if event == "key" then
-                        if (param == keys.enter or param == keys.space) and isOkFilename(options.tempFilename) and fileExists(options.tempFilename) then
+                        if (param == keys.enter or param == keys.space) and isOkFilename(options.tempFilename) and fs.exists(options.tempFilename) then
                             result = loadSong(options.tempFilename)
                             if result ~= nil then
                                 self.errorMsg = result
