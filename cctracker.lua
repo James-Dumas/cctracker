@@ -1103,6 +1103,9 @@ function init()
                             song.order[i] = song.order[i + 1]
                         end
                         song.order[options.frames - 1] = nil
+                        if options.currentFrame == options.frames - 1 then
+                            options.currentFrame = options.currentFrame - 1
+                        end
                         options.frames = options.frames - 1
                         self.needsRedraw = true
                         panels.header.needsRedraw = true
