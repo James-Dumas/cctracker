@@ -2,8 +2,8 @@ width = 51
 height = 19
 
 local w, h = term.getSize()
-if w ~= width or h ~= height or not term.isColor() then
-    error("Please run on an advanced computer.")
+if w ~= width or h ~= height then
+    error("Invalid terminal size.")
 end
 
 speaker = peripheral.find("speaker")
