@@ -11,6 +11,8 @@ if not speaker then
     error("No speaker connected.")
 end
 
+saveFormatVer = 2
+
 panels = {}
 song = {
     frames = {},
@@ -47,7 +49,7 @@ options = {
     currentRow = 1,
     currentChannel = 1,
     currentItem = "note",
-    currentInstrument = 1,
+    currentInstrument = 16,
 
     minFrames = 1,
     maxFrames = 256,
@@ -185,9 +187,12 @@ function playNotes(notes)
 end
 
 function newFrame()
-    local frame = {}
+    local frame = {
+        notes = {},
+        jump = nil
+    }
     for r = 1, options.rows do
-        frame[r] = {}
+        frame.notes[r] = {}
     end
     return frame
 end
@@ -198,11 +203,11 @@ function updateSelection()
     selection.c1 = math.min(selection.ic, options.currentChannel)
     selection.r2 = math.max(selection.ir, options.currentRow)
     selection.c2 = math.max(selection.ic, options.currentChannel)
-    local frame = song:getFrameAt(options.currentFrame)
+    local notes = song:getFrameAt(options.currentFrame).notes
     for r = selection.r1, selection.r2 do
         selection.data[r - selection.r1] = {}
         for c = selection.c1, selection.c2 do
-            local note = frame[r][c]
+            local note = notes[r][c]
             if note ~= nil then
                 selection.data[r - selection.r1][c - selection.c1] = {note[1], note[2], note[3]}
             end
@@ -257,7 +262,7 @@ end
 
 function saveSong(filename)
     local outfile = io.open(filename, "w")
-    outfile:write("cctracker\n")
+    outfile:write("cctracker format v" .. saveFormatVer .. "\n")
     outfile:write(options.name .. "\n")
     outfile:write(options.speed .. "\n")
     outfile:write(options.frames .. "\n")
@@ -276,10 +281,13 @@ function saveSong(filename)
     for fi, frame in pairs(song.frames) do
         if not isEmptyNestedTable(frame) then
             outfile:write("f" .. fi .. "\n")
-            for ri, row in pairs(song.frames[fi]) do
+            if frame.jump ~= nil then
+                outfile:write("j" .. frame.jump .. "\n")
+            end
+            for ri, row in pairs(song.frames[fi].notes) do
                 if not isEmptyNestedTable(row) then
                     outfile:write("r" .. ri .. "\n")
-                    for ci, note in pairs(song.frames[fi][ri]) do
+                    for ci, note in pairs(song.frames[fi].notes[ri]) do
                         outfile:write("c" .. ci .. "\n")
                         outfile:write(note[1] .. " " .. note[2] .. " " .. note[3] .. "\n")
                     end
@@ -299,8 +307,20 @@ function loadSong(filename)
         chan = 1
     }
     for line in infile:lines() do
-        if lineNum == 1 and line ~= "cctracker" then
-            return "Not a cctracker file."
+        if lineNum == 1 then
+            if line:find("cctracker") ~= 1 then
+                return {"Not a cctracker file."}
+            end
+
+            local s, e = line:find("format v")
+            if s == nil then
+                formatVer = 1
+            else
+                local formatVer = tonumber(line:sub(e + 1))
+                if formatVer > saveFormatVer then
+                    return {"This file was saved from a newer version", "of cctracker and is incompatible."}
+                end
+            end
         elseif lineNum == 2 then
             options.name = line
         elseif lineNum == 3 then
@@ -334,12 +354,14 @@ function loadSong(filename)
                     status.row = tonumber(num)
                 elseif char == "c" then
                     status.chan = tonumber(num)
+                elseif char == "j" then
+                    song.frames[status.frame].jump = tonumber(num)
                 else
                     local note = {}
                     for val in string.gmatch(line, "[^%s]+") do
                         table.insert(note, tonumber(val))
                     end
-                    song.frames[status.frame][status.row][status.chan] = note
+                    song.frames[status.frame].notes[status.row][status.chan] = note
                 end
             end
         end
@@ -367,20 +389,25 @@ function exportSong(filename)
     local emptyCount = 0
     for i = 0, options.frames - 1 do
         local frame = song.frames[song.order[i]]
-        for ri, row in pairs(frame) do
-            if not isEmptyNestedTable(row) then
-                if emptyCount > 0 then
-                    outfile:write("\n-" .. emptyCount)
-                    emptyCount = 0
+        for ri, row in pairs(frame.notes) do
+            if frame.jump == nil or ri <= frame.jump then
+                if not isEmptyNestedTable(row) then
+                    if emptyCount > 0 then
+                        outfile:write("\n-" .. emptyCount)
+                        emptyCount = 0
+                    end
+                    outfile:write("\n")
+                    for ci, note in pairs(frame.notes[ri]) do
+                        outfile:write(zeroPad(note[1], 2) .. zeroPad(note[2], 2) .. zeroPad(note[3], 2))
+                    end
+                else
+                    emptyCount = emptyCount + 1
                 end
-                outfile:write("\n")
-                for ci, note in pairs(frame[ri]) do
-                    outfile:write(zeroPad(note[1], 2) .. zeroPad(note[2], 2) .. zeroPad(note[3], 2))
-                end
-            else
-                emptyCount = emptyCount + 1
             end
         end
+    end
+    if emptyCount > 0 then
+        outfile:write("\n-" .. emptyCount)
     end
     io.close(outfile)
 end
@@ -404,8 +431,12 @@ function playSong()
         time = os.time()
         alarmTime = (time + t * options.speed) % 24
         os.setAlarm(alarmTime)
-        playNotes(song:getFrameAt(options.currentFrame)[options.currentRow])
+        local frame = song:getFrameAt(options.currentFrame)
+        playNotes(frame.notes[options.currentRow])
         redrawPanels()
+        if frame.jump == options.currentRow then
+            options.currentRow = options.rows
+        end
         stepRow()
     end
 end
@@ -500,7 +531,12 @@ function init()
             self.window.setCursorPos(43, 2)
             self.window.write("Rows: " .. (options.editingRows or zeroPad(options.rows, 2)))
             self.window.setCursorPos(1, 3)
-            self.window.write("---------------------------------------------------")
+            local barChar = "\140"
+            local s = ""
+            for i = 1, width do
+                s = s .. barChar
+            end
+            self.window.write(s)
             self.window.setCursorBlink(true)
         end,
         doAction = function(self, event, param)
@@ -529,6 +565,9 @@ function init()
                             song.order[i] = 0
                         end
                     end
+                    if options.currentFrame >= options.frames then
+                        options.currentFrame = options.frames - 1
+                    end
                     panels.header.needsRedraw = true
                     panels.frames.needsRedraw = true
                 end
@@ -544,15 +583,15 @@ function init()
                     options.rows = math.min(options.maxRows, math.max(options.minRows, tonumber(options.editingRows)))
                     for i, frameHere in pairs(song.frames) do
                         if options.rows > oldRowNum then
-                            for i = oldRowNum + 1, options.rows do
-                                if frameHere[i] == nil then
-                                    frameHere[i] = {}
+                            for j = oldRowNum + 1, options.rows do
+                                if frameHere.notes[j] == nil then
+                                    frameHere.notes[j] = {}
                                 end
                             end
                         else
-                            for i = options.rows + 1, oldRowNum do
-                                if isEmptyNestedTable(frameHere[i]) then
-                                    frameHere[i] = nil
+                            for j = options.rows + 1, oldRowNum do
+                                if isEmptyNestedTable(frameHere.notes[j]) then
+                                    frameHere.notes[j] = nil
                                 end
                             end
                         end
@@ -732,7 +771,7 @@ function init()
         end
     }
     panels.editor = {
-        window = window.create(term.current(), 2, 4, 43, 16),
+        window = window.create(term.current(), 1, 4, 44, 16),
         needsRedraw = true,
         autoSetCursorPos = function(self)
             offset = 0
@@ -741,7 +780,7 @@ function init()
             elseif options.currentItem == "volume" then
                 offset = 4
             end
-            self.window.setCursorPos(6 * (options.currentChannel - 1) + 2 + offset, 9)
+            self.window.setCursorPos(6 * (options.currentChannel - 1) + 3 + offset, 9)
         end,
         gotoDefaultPosition = function(self)
             options.panel = "editor"
@@ -750,50 +789,61 @@ function init()
         redraw = function(self)
             self.window.clear()
             self.window.setCursorBlink(false)
-            self.window.setCursorPos(1, 1)
+            self.window.setCursorPos(2, 1)
             self.window.write("|     |     |     |     |     |     |     |")
             for chan = 1, 7 do
-                self.window.setCursorPos(6 * (chan - 1) + 3, 1)
+                self.window.setCursorPos(6 * (chan - 1) + 4, 1)
                 if muted[chan] then
-                    self.window.blit("!" .. chan .. "!", "888", "fff")
+                    self.window.blit("-" .. chan .. "-", "888", "fff")
                 else
-                    self.window.write(" " .. chan)
+                    self.window.write("\17" .. chan .. "\16")
                 end
             end
 
+            local frame = song:getFrameAt(options.currentFrame)
+            local barColors = {"8", "5", "0", "4"}
+            local lineColors = {"77777", "ddddd", "88888", "55555"}
             for windowRow = 2, 16 do
                 local dispRow = windowRow - 9 + options.currentRow
                 local dispString = "|"
-                local colorString = "8"
                 local bgString = "f"
+                local barColorI = 1
+                local lineColorI = 1
+                if (dispRow - 1) % 4 == 0 then
+                    barColorI = barColorI + 1
+                    lineColorI = lineColorI + 1
+                end
                 if dispRow == options.currentRow then
-                    colorString = "0"
+                    barColorI = barColorI + 2
+                    lineColorI = lineColorI + 2
+                end
+                local colorString = barColors[barColorI]
+                if frame.jump == dispRow then
+                    self.window.setCursorPos(1, windowRow)
+                    self.window.blit("\187", "e", "f")
                 end
                 if dispRow > 0 and dispRow <= options.rows then
                     for chan = 1, 7 do
-                        local note = song:getFrameAt(options.currentFrame)[dispRow][chan]
+                        local note = frame.notes[dispRow][chan]
                         if note ~= nil then
                             dispString = dispString .. getDisplayNote(note) .. dec2hex(note[2] - 1) .. dec2hex(note[3]) .. "|"
                             if instruments[note[2]][4] then
-                                colorString = colorString .. "444530"
+                                colorString = colorString .. "44453"
                             else
-                                colorString = colorString .. "444e30"
+                                colorString = colorString .. "444e3"
                             end
                         else
                             dispString = dispString .. "-----|"
-                            if dispRow == options.currentRow then
-                                colorString = colorString .. "888880"
-                            else
-                                colorString = colorString .. "777778"
-                            end
+                            colorString = colorString .. lineColors[lineColorI]
                         end
+                        colorString = colorString .. barColors[barColorI]
                         if options.selecting and dispRow >= selection.r1 and dispRow <= selection.r2 and chan >= selection.c1 and chan <= selection.c2 then
                             bgString = bgString .. "bbbbbf"
                         else
                             bgString = bgString .. "ffffff"
                         end
                     end
-                    self.window.setCursorPos(1, windowRow)
+                    self.window.setCursorPos(2, windowRow)
                     self.window.blit(dispString, colorString, bgString)
                 end
             end
@@ -814,9 +864,9 @@ function init()
                             if ri + options.currentRow <= options.rows then
                                 for ci, note in pairs(row) do
                                     if ci + options.currentChannel <= 7 then
-                                        local frame = song:getFrameAt(options.currentFrame)
+                                        local notes = song:getFrameAt(options.currentFrame).notes
                                         if note ~= nil then
-                                            frame[ri + options.currentRow][ci + options.currentChannel] = {note[1], note[2], note[3]}
+                                            notes[ri + options.currentRow][ci + options.currentChannel] = {note[1], note[2], note[3]}
                                         end
                                     end
                                 end
@@ -826,6 +876,14 @@ function init()
                         self.needsRedraw = true
                     elseif not options.selecting and param == keys.m then
                         muted[options.currentChannel] = not muted[options.currentChannel]
+                        self.needsRedraw = true
+                    elseif not options.selecting and param == keys.j then
+                        local frame = song:getFrameAt(options.currentFrame)
+                        if frame.jump == options.currentRow then
+                            frame.jump = nil
+                        else
+                            frame.jump = options.currentRow
+                        end
                         self.needsRedraw = true
                     elseif param == keys.s then
                         if options.selecting then
@@ -863,18 +921,18 @@ function init()
                             clearSelection()
                         elseif param == keys.x then
                             clipboard = selection.data
-                            local frame = song:getFrameAt(options.currentFrame)
+                            local notes = song:getFrameAt(options.currentFrame).notes
                             for r = selection.r1, selection.r2 do
                                 for c = selection.c1, selection.c2 do
-                                    frame[r][c] = nil
+                                    notes[r][c] = nil
                                 end
                             end
                             clearSelection()
                         elseif param == keys.delete or param == keys.backspace then
-                            local frame = song:getFrameAt(options.currentFrame)
+                            local notes = song:getFrameAt(options.currentFrame).notes
                             for r = selection.r1, selection.r2 do
                                 for c = selection.c1, selection.c2 do
-                                    frame[r][c] = nil
+                                    notes[r][c] = nil
                                 end
                             end
                             clearSelection()
@@ -892,10 +950,10 @@ function init()
                             updateSelection()
                             self:autoSetCursorPos()
                         elseif param == keys.r then
-                            local frame = song:getFrameAt(options.currentFrame)
+                            local notes = song:getFrameAt(options.currentFrame).notes
                             for r = selection.r1, selection.r2 do
                                 for c = selection.c1, selection.c2 do
-                                    local note = frame[r][c]       
+                                    local note = notes[r][c]       
                                     if note ~= nil then
                                         note[2] = options.currentInstrument
                                     end
@@ -903,10 +961,10 @@ function init()
                             end
                             updateSelection()
                         elseif param == keys.equals then
-                            local frame = song:getFrameAt(options.currentFrame)
+                            local notes = song:getFrameAt(options.currentFrame).notes
                             for r = selection.r1, selection.r2 do
                                 for c = selection.c1, selection.c2 do
-                                    local note = frame[r][c]       
+                                    local note = notes[r][c]       
                                     if note ~= nil and note[1] < 24 then
                                         note[1] = note[1] + 1
                                     end
@@ -914,10 +972,10 @@ function init()
                             end
                             updateSelection()
                         elseif param == keys.minus then
-                            local frame = song:getFrameAt(options.currentFrame)
+                            local notes = song:getFrameAt(options.currentFrame).notes
                             for r = selection.r1, selection.r2 do
                                 for c = selection.c1, selection.c2 do
-                                    local note = frame[r][c]       
+                                    local note = notes[r][c]
                                     if note ~= nil and note[1] > 0 then
                                         note[1] = note[1] - 1
                                     end
@@ -925,10 +983,10 @@ function init()
                             end
                             updateSelection()
                         elseif param == keys.rightBracket then
-                            local frame = song:getFrameAt(options.currentFrame)
+                            local notes = song:getFrameAt(options.currentFrame).notes
                             for r = selection.r1, selection.r2 do
                                 for c = selection.c1, selection.c2 do
-                                    local note = frame[r][c]       
+                                    local note = notes[r][c]
                                     if note ~= nil and note[1] <= 12 then
                                         note[1] = note[1] + 12
                                     end
@@ -936,10 +994,10 @@ function init()
                             end
                             updateSelection()
                         elseif param == keys.leftBracket then
-                            local frame = song:getFrameAt(options.currentFrame)
+                            local notes = song:getFrameAt(options.currentFrame).notes
                             for r = selection.r1, selection.r2 do
                                 for c = selection.c1, selection.c2 do
-                                    local note = frame[r][c]       
+                                    local note = notes[r][c]
                                     if note ~= nil and note[1] >= 12 then
                                         note[1] = note[1] - 12
                                     end
@@ -973,7 +1031,7 @@ function init()
                             end
                             self:autoSetCursorPos()
                         elseif param == keys.backspace or param == keys.delete then
-                            song:getFrameAt(options.currentFrame)[options.currentRow][options.currentChannel] = nil
+                            song:getFrameAt(options.currentFrame).notes[options.currentRow][options.currentChannel] = nil
                             if param == keys.delete then
                                 stepRow()
                             end
@@ -982,7 +1040,7 @@ function init()
                             if options.currentItem == "note" then
                                 pitch = noteKeys[keys.getName(param)]
                                 if pitch ~= nil then
-                                    local row = song:getFrameAt(options.currentFrame)[options.currentRow]
+                                    local row = song:getFrameAt(options.currentFrame).notes[options.currentRow]
                                     local note = row[options.currentChannel]
                                     if note ~= nil then
                                         note[1] = pitch
@@ -994,7 +1052,7 @@ function init()
                                     self.needsRedraw = true
                                 end
                             elseif options.currentItem == "instrument" and hexDigitSet[keys.getName(param)] then
-                                local note = song:getFrameAt(options.currentFrame)[options.currentRow][options.currentChannel]
+                                local note = song:getFrameAt(options.currentFrame).notes[options.currentRow][options.currentChannel]
                                 local instrumentNum = hex2dec(hexDigitMap[keys.getName(param)]) + 1
                                 if note ~= nil then
                                     note[2] = instrumentNum
@@ -1004,7 +1062,7 @@ function init()
                                     self.needsRedraw = true
                                 end
                             elseif options.currentItem == "volume" and hexDigitSet[keys.getName(param)] then
-                                local note = song:getFrameAt(options.currentFrame)[options.currentRow][options.currentChannel]
+                                local note = song:getFrameAt(options.currentFrame).notes[options.currentRow][options.currentChannel]
                                 if note ~= nil then
                                     note[3] = hex2dec(hexDigitMap[keys.getName(param)])
                                     stepRow()
@@ -1232,7 +1290,11 @@ function init()
             if self.errorMsg ~= nil then
                 self.window.setTextColor(colors.red)
                 self.window.setCursorPos(3, 4)
-                self.window.write("Error: " .. self.errorMsg)
+                self.window.write("Error:")
+                for i, v in ipairs(self.errorMsg) do
+                    self.window.setCursorPos(10, 3 + i)
+                    self.window.write(v)
+                end
                 self.window.setTextColor(colors.white)
             end
             self.window.setCursorPos(2, 9)

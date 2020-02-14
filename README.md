@@ -43,6 +43,7 @@ The instrument values correspond the the 16 note block instruments in the latest
 * enter/space - select option
 #### editor panel
 * arrow keys - move cursor
+* space - play from current frame
 * shift + space - play from first frame
 * shift + S - enter selection mode
   * (In selection mode):
@@ -58,12 +59,16 @@ The instrument values correspond the the 16 note block instruments in the latest
   * right/left bracket - transpose selection up/down octave
 * shift + V - paste clipboard at cursor
 * shift + M - mute/unmute current channel
+* shift + J - set/unset current row as jump point
 * shift + [0123456789ABCDEF] - select instrument
 * various keyboard keys - enter note / instrument / volume
   * the 'A' key is the lowest F#, 'Z' key is G, 'S' key is G#, 'X' key is A, etc.
-  * the next octave starts on the '1' key on F#, continuing the same pattern.
+  * the next octave starts on the '1' key on F#, continuing the same pattern. (piano keys)
+  * for instrument and volume just press one of [0123456789ABCDEF]
 * backspace - delete note
 * delete - delete note and move down a row
 #### frames panel
 * up/down - change frame index
 * left/right - change frame at current index
+* I - insert new frame before current frame
+* delete - delete current frame
