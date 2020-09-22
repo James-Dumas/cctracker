@@ -362,9 +362,9 @@ function loadSong(filename)
                 i = i + 1
             end
         else
-            if string.len(line) > 1 then
+            if string.len(line) > 0 then
                 local char = string.sub(line, 1, 1)
-                local num = string.sub(line, 2, -1)
+                local num = string.sub(line, 2)
                 if char == "f" then
                     status.frame = tonumber(num)
                     song.frames[status.frame] = newFrame()
