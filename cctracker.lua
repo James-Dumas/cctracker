@@ -290,23 +290,25 @@ function saveSong(filename)
         if not isEmptyNestedTable(frame) then
             outfile:write("f" .. fi .. "\n")
             for ri, row in pairs(song.frames[fi].notes) do
-                if not isEmptyNestedTable(row) then
+                if not isEmptyNestedTable(row) or song.frames[fi].effects[ri] ~= nil then
                     outfile:write("r" .. ri .. "\n")
-                    for ci, note in pairs(song.frames[fi].notes[ri]) do
-                        outfile:write("c" .. ci .. "\n")
-                        outfile:write(note[1] .. " " .. note[2] .. " " .. note[3] .. "\n")
+                    if song.frames[fi].effects[ri] ~= nil then
+                        local effect = song.frames[fi].effects[ri]
+                        if effect.type == "next" then
+                            outfile:write("n\n")
+                        elseif effect.type == "stop" then
+                            outfile:write("s\n")
+                        elseif effect.type == "speed" then
+                            outfile:write("t" .. effect.value .. "\n")
+                        elseif effect.type == "jump" then
+                            outfile:write("j" .. effect.value .. "\n")
+                        end
                     end
-                end
-                if song.frames[fi].effects[ri] ~= nil then
-                    local effect = song.frames[fi].effects[ri]
-                    if effect.type == "next" then
-                        outfile:write("n\n")
-                    elseif effect.type == "stop" then
-                        outfile:write("s\n")
-                    elseif effect.type == "speed" then
-                        outfile:write("t" .. effect.value .. "\n")
-                    elseif effect.type == "jump" then
-                        outfile:write("j" .. effect.value .. "\n")
+                    if not isEmptyNestedTable(row) then
+                        for ci, note in pairs(song.frames[fi].notes[ri]) do
+                            outfile:write("c" .. ci .. "\n")
+                            outfile:write(note[1] .. " " .. note[2] .. " " .. note[3] .. "\n")
+                        end
                     end
                 end
             end
