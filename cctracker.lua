@@ -11,7 +11,7 @@ if not speaker then
     error("No speaker connected.")
 end
 
-saveFormatVer = 2
+saveFormatVer = 3
 
 panels = {}
 song = {
@@ -50,13 +50,14 @@ options = {
     currentChannel = 1,
     currentItem = "note",
     currentInstrument = 16,
+    onEffectsBar = false,
 
     minFrames = 1,
     maxFrames = 256,
     minRows = 4,
     maxRows = 64,
     minSpeed = 1,
-    maxSpeed = 20,
+    maxSpeed = 32,
 
     panel = "header",
     name = "New Song",
@@ -127,6 +128,13 @@ instruments = {
     {"harp", 3, "Piano"}
 }
 
+effectInfo = {
+    next = {symbol="Nxt", color="222"},
+    stop = {symbol="Stp", color="eee"},
+    speed = {symbol="T", color="188"},
+    jump = {symbol="J", color="988"}
+}
+
 digitSet = {["0"] = true, ["1"] = true, ["2"] = true, ["3"] = true, ["4"] = true, ["5"] = true, ["6"] = true, ["7"] = true, ["8"] = true, ["9"] = true}
 hexDigitSet = {["zero"] = true, ["one"] = true, ["two"] = true, ["three"] = true, ["four"] = true, ["five"] = true, ["six"] = true, ["seven"] = true, ["eight"] = true, ["nine"] = true, ["a"] = true, ["b"] = true, ["c"] = true, ["d"] = true, ["e"] = true, ["f"] = true}
 hexDigitMap = {["zero"] = 0, ["one"] = 1, ["two"] = 2, ["three"] = 3, ["four"] = 4, ["five"] = 5, ["six"] = 6, ["seven"] = 7, ["eight"] = 8, ["nine"] = 9, ["a"] = "a", ["b"] = "b", ["c"] = "c", ["d"] = "d", ["e"] = "e", ["f"] = "f"}
@@ -189,7 +197,7 @@ end
 function newFrame()
     local frame = {
         notes = {},
-        jump = nil
+        effects = {}
     }
     for r = 1, options.rows do
         frame.notes[r] = {}
@@ -281,15 +289,24 @@ function saveSong(filename)
     for fi, frame in pairs(song.frames) do
         if not isEmptyNestedTable(frame) then
             outfile:write("f" .. fi .. "\n")
-            if frame.jump ~= nil then
-                outfile:write("j" .. frame.jump .. "\n")
-            end
             for ri, row in pairs(song.frames[fi].notes) do
                 if not isEmptyNestedTable(row) then
                     outfile:write("r" .. ri .. "\n")
                     for ci, note in pairs(song.frames[fi].notes[ri]) do
                         outfile:write("c" .. ci .. "\n")
                         outfile:write(note[1] .. " " .. note[2] .. " " .. note[3] .. "\n")
+                    end
+                end
+                if song.frames[fi].effects[ri] ~= nil then
+                    local effect = song.frames[fi].effects[ri]
+                    if effect.type == "next" then
+                        outfile:write("n\n")
+                    elseif effect.type == "stop" then
+                        outfile:write("s\n")
+                    elseif effect.type == "speed" then
+                        outfile:write("t" .. effect.value .. "\n")
+                    elseif effect.type == "jump" then
+                        outfile:write("j" .. effect.value .. "\n")
                     end
                 end
             end
@@ -301,6 +318,7 @@ end
 function loadSong(filename)
     local infile = io.open(filename, "r")
     local lineNum = 1
+    local formatVer = 1
     local status = {
         frame = 0,
         row = 1,
@@ -313,10 +331,8 @@ function loadSong(filename)
             end
 
             local s, e = line:find("format v")
-            if s == nil then
-                formatVer = 1
-            else
-                local formatVer = tonumber(line:sub(e + 1))
+            if s ~= nil then
+                formatVer = tonumber(line:sub(e + 1))
                 if formatVer > saveFormatVer then
                     return {"This file was saved from a newer version", "of cctracker and is incompatible."}
                 end
@@ -354,8 +370,18 @@ function loadSong(filename)
                     status.row = tonumber(num)
                 elseif char == "c" then
                     status.chan = tonumber(num)
+                elseif char == "n" then
+                    song.frames[status.frame].effects[status.row] = {type="next"}
+                elseif char == "s" then
+                    song.frames[status.frame].effects[status.row] = {type="stop"}
+                elseif char == "t" then
+                    song.frames[status.frame].effects[status.row] = {type="speed", value=tonumber(num)}
                 elseif char == "j" then
-                    song.frames[status.frame].jump = tonumber(num)
+                    if formatVer < 3 then
+                        song.frames[status.frame].effects[tonumber(num)] = {type="next"}
+                    else
+                        song.frames[status.frame].effects[status.row] = {type="jump", value=tonumber(num)}
+                    end
                 else
                     local note = {}
                     for val in string.gmatch(line, "[^%s]+") do
@@ -381,35 +407,36 @@ function loadSong(filename)
 end
 
 function exportSong(filename)
-    local outfile = io.open(filename, "w")
-    outfile:write("brownbricksaudio\n")
-    outfile:write(options.name .. "\n")
-    outfile:write(options.artistName .. "\n")
-    outfile:write(options.speed .. "")
-    local emptyCount = 0
-    for i = 0, options.frames - 1 do
-        local frame = song.frames[song.order[i]]
-        for ri, row in pairs(frame.notes) do
-            if frame.jump == nil or ri <= frame.jump then
-                if not isEmptyNestedTable(row) then
-                    if emptyCount > 0 then
-                        outfile:write("\n-" .. emptyCount)
-                        emptyCount = 0
-                    end
-                    outfile:write("\n")
-                    for ci, note in pairs(frame.notes[ri]) do
-                        outfile:write(zeroPad(note[1], 2) .. zeroPad(note[2], 2) .. zeroPad(note[3], 2))
-                    end
-                else
-                    emptyCount = emptyCount + 1
-                end
-            end
-        end
-    end
-    if emptyCount > 0 then
-        outfile:write("\n-" .. emptyCount)
-    end
-    io.close(outfile)
+        -- temporarily disabled
+    --local outfile = io.open(filename, "w")
+    --outfile:write("brownbricksaudio\n")
+    --outfile:write(options.name .. "\n")
+    --outfile:write(options.artistName .. "\n")
+    --outfile:write(options.speed .. "")
+    --local emptyCount = 0
+    --for i = 0, options.frames - 1 do
+    --    local frame = song.frames[song.order[i]]
+    --    for ri, row in pairs(frame.notes) do
+    --        if frame.jump == nil or ri <= frame.jump then
+    --            if not isEmptyNestedTable(row) then
+    --                if emptyCount > 0 then
+    --                    outfile:write("\n-" .. emptyCount)
+    --                    emptyCount = 0
+    --                end
+    --                outfile:write("\n")
+    --                for ci, note in pairs(frame.notes[ri]) do
+    --                    outfile:write(zeroPad(note[1], 2) .. zeroPad(note[2], 2) .. zeroPad(note[3], 2))
+    --                end
+    --            else
+    --                emptyCount = emptyCount + 1
+    --            end
+    --        end
+    --    end
+    --end
+    --if emptyCount > 0 then
+    --    outfile:write("\n-" .. emptyCount)
+    --end
+    --io.close(outfile)
 end
 
 function isOkFilename(filepath)
@@ -422,28 +449,49 @@ function playSong()
     options.stop = false
     panels.editor.needsRedraw = true
     redrawPanels()
+    local playSpeed = options.speed
     local t = 0.001 -- one tick
     local time = os.time()
     local alarmTime = time + t
     os.setAlarm(alarmTime)
     while not options.stop do
         os.pullEvent("alarm")
-        time = os.time()
-        alarmTime = (time + t * options.speed) % 24
-        os.setAlarm(alarmTime)
-        local frame = song:getFrameAt(options.currentFrame)
-        playNotes(frame.notes[options.currentRow])
         redrawPanels()
-        if frame.jump == options.currentRow then
-            options.currentRow = options.rows
+        local frame = song:getFrameAt(options.currentFrame)
+        if frame.effects[options.currentRow] ~= nil then
+            local effect = frame.effects[options.currentRow]
+            if effect.type == "next" then
+                options.currentRow = options.rows
+            elseif effect.type == "stop" then
+                options.stop = true
+                os.queueEvent("key", 0)
+            elseif effect.type == "speed" then
+                if effect.value == 0 then
+                    playSpeed = options.speed
+                else
+                    playSpeed = effect.value
+                end
+            elseif effect.type == "jump" and options.frames > effect.value then
+                options.currentRow = options.rows
+                if effect.value == 0 then
+                    options.currentFrame = options.frames - 1
+                else
+                    options.currentFrame = effect.value - 1
+                end
+            end
         end
+        time = os.time()
+        alarmTime = (time + t * playSpeed) % 24
+        os.setAlarm(alarmTime)
+        playNotes(frame.notes[options.currentRow])
         stepRow()
     end
+    stepRow(true)
 end
 
 function waitForStop()
     options.shift = false
-    while true do
+    while not options.stop do
         local event, key = os.pullEvent("key")
         local x, y = panels[options.panel].window.getCursorPos()
         if key == keys.space or (options.panel == "header" and x == 19 and y == 2 and key == keys.enter) then
@@ -771,16 +819,26 @@ function init()
         end
     }
     panels.editor = {
-        window = window.create(term.current(), 1, 4, 44, 16),
+        window = window.create(term.current(), 1, 4, 46, 16),
         needsRedraw = true,
         autoSetCursorPos = function(self)
-            offset = 0
-            if options.currentItem == "instrument" then
-                offset = 3
-            elseif options.currentItem == "volume" then
-                offset = 4
+            if options.onEffectsBar then
+                local x, y = self.window.getCursorPos()
+                local effectHere = song:getFrameAt(options.currentFrame).effects[options.currentRow]
+                if x > 3 then x = 3 end
+                self.window.setCursorPos(x, 9)
+                if (effectHere == nil or effectHere.type == "next" or effectHere.type == "stop") and x > 1 then
+                    self.window.setCursorPos(1, 9)
+                end
+            else
+                offset = 0
+                if options.currentItem == "instrument" then
+                    offset = 3
+                elseif options.currentItem == "volume" then
+                    offset = 4
+                end
+                self.window.setCursorPos(6 * (options.currentChannel - 1) + 5 + offset, 9)
             end
-            self.window.setCursorPos(6 * (options.currentChannel - 1) + 3 + offset, 9)
         end,
         gotoDefaultPosition = function(self)
             options.panel = "editor"
@@ -789,10 +847,10 @@ function init()
         redraw = function(self)
             self.window.clear()
             self.window.setCursorBlink(false)
-            self.window.setCursorPos(2, 1)
-            self.window.write("|     |     |     |     |     |     |     |")
+            self.window.setCursorPos(1, 1)
+            self.window.write(" FX|     |     |     |     |     |     |     |")
             for chan = 1, 7 do
-                self.window.setCursorPos(6 * (chan - 1) + 4, 1)
+                self.window.setCursorPos(6 * (chan - 1) + 6, 1)
                 if muted[chan] then
                     self.window.blit("-" .. chan .. "-", "888", "fff")
                 else
@@ -818,11 +876,16 @@ function init()
                     lineColorI = lineColorI + 2
                 end
                 local colorString = barColors[barColorI]
-                if frame.jump == dispRow then
-                    self.window.setCursorPos(1, windowRow)
-                    self.window.blit("\187", "e", "f")
-                end
                 if dispRow > 0 and dispRow <= options.rows then
+                    if frame.effects[dispRow] ~= nil then
+                        local effect = frame.effects[dispRow]
+                        local fxString = effectInfo[effect.type].symbol
+                        if effect.value ~= nil then
+                            fxString = fxString .. zeroPad(dec2hex(effect.value), 2)
+                        end
+                        self.window.setCursorPos(1, windowRow)
+                        self.window.blit(fxString, effectInfo[effect.type].color, "fff")
+                    end
                     for chan = 1, 7 do
                         local note = frame.notes[dispRow][chan]
                         if note ~= nil then
@@ -843,14 +906,90 @@ function init()
                             bgString = bgString .. "ffffff"
                         end
                     end
-                    self.window.setCursorPos(2, windowRow)
-                    self.window.blit(dispString, colorString, bgString)
+                else
+                    dispString = "|     |     |     |     |     |     |     |"
+                    colorString = "7777777777777777777777777777777777777777777"
+                    bgString = "fffffffffffffffffffffffffffffffffffffffffff"
                 end
+                self.window.setCursorPos(4, windowRow)
+                self.window.blit(dispString, colorString, bgString)
             end
             self.window.setCursorBlink(true)
         end,
         doAction = function(self, event, param)
-            if options.shift then
+            if options.onEffectsBar then
+                local x, y = self.window.getCursorPos()
+                local effectTable = song:getFrameAt(options.currentFrame).effects
+                local effectHere = effectTable[options.currentRow]
+                if event == "key" then
+                    if param == keys.up then
+                        if options.shift then
+                            panels.header:gotoDefaultPosition()
+                        else
+                            stepRow(true)
+                            self:autoSetCursorPos()
+                        end
+                    elseif param == keys.down then
+                        stepRow()
+                        self:autoSetCursorPos()
+                    elseif param == keys.left then
+                        if x > 1 then
+                            self.window.setCursorPos(x - 1, 9)
+                        end
+                    elseif param == keys.right then
+                        if options.shift then
+                            panels.frames:gotoDefaultPosition()
+                        elseif effectHere == nil or effectHere.type == "next" or effectHere.type == "stop" or x == 3 then
+                            options.onEffectsBar = false
+                            self:autoSetCursorPos()
+                        else
+                            self.window.setCursorPos(x + 1, 9)
+                        end
+                    elseif param == keys.delete or param == keys.backspace then
+                        effectTable[options.currentRow] = nil
+                        if param == keys.delete then
+                            stepRow()
+                        end
+                        self.needsRedraw = true
+                        self:autoSetCursorPos()
+                    elseif x == 1 then
+                        if param == keys.n then
+                            effectTable[options.currentRow] = {type="next"}
+                            self.needsRedraw = true
+                            stepRow()
+                        elseif param == keys.s then
+                            effectTable[options.currentRow] = {type="stop"}
+                            self.needsRedraw = true
+                            stepRow()
+                        elseif param == keys.t then
+                            effectTable[options.currentRow] = {type="speed", value=0}
+                            self.needsRedraw = true
+                            self.window.setCursorPos(2, 9)
+                        elseif param == keys.j then
+                            effectTable[options.currentRow] = {type="jump", value=0}
+                            self.needsRedraw = true
+                            self.window.setCursorPos(2, 9)
+                        end
+                    elseif effectHere ~= nil and effectHere.value ~= nil and x > 1 and hexDigitSet[keys.getName(param)] then
+                        local digit = hexDigitMap[keys.getName(param)]
+                        local val = zeroPad(dec2hex(effectHere.value), 2)
+                        if x == 2 then
+                            val = digit .. val:sub(2,2)
+                            self.window.setCursorPos(3, 9)
+                        else
+                            val = val:sub(1,1) .. digit
+                            stepRow()
+                            self.window.setCursorPos(2, 9)
+                            self:autoSetCursorPos()
+                        end
+                        effectHere.value = hex2dec(val)
+                        if effectHere.type == "speed" and effectHere.value > options.maxSpeed then
+                            effectHere.value = options.maxSpeed
+                        end
+                        self.needsRedraw = true
+                    end
+                end
+            elseif options.shift then
                 if event == "key" then
                     if param == keys.up then
                         clearSelection()
@@ -876,14 +1015,6 @@ function init()
                         self.needsRedraw = true
                     elseif not options.selecting and param == keys.m then
                         muted[options.currentChannel] = not muted[options.currentChannel]
-                        self.needsRedraw = true
-                    elseif not options.selecting and param == keys.j then
-                        local frame = song:getFrameAt(options.currentFrame)
-                        if frame.jump == options.currentRow then
-                            frame.jump = nil
-                        else
-                            frame.jump = options.currentRow
-                        end
                         self.needsRedraw = true
                     elseif param == keys.s then
                         if options.selecting then
@@ -1011,9 +1142,13 @@ function init()
                         elseif param == keys.down then
                             stepRow()
                         elseif param == keys.left then
-                            if options.currentItem == "note" and options.currentChannel > 1 then
-                                options.currentChannel = options.currentChannel - 1
-                                options.currentItem = "volume"
+                            if options.currentItem == "note" then
+                                if options.currentChannel > 1 then
+                                    options.currentChannel = options.currentChannel - 1
+                                    options.currentItem = "volume"
+                                else
+                                    options.onEffectsBar = true
+                                end
                             elseif options.currentItem == "instrument" then
                                 options.currentItem = "note"
                             elseif options.currentItem == "volume" then
@@ -1076,7 +1211,7 @@ function init()
         end
     }
     panels.frames = {
-        window = window.create(term.current(), 46, 4, 5, 16),
+        window = window.create(term.current(), 47, 4, 5, 16),
         needsRedraw = true,
         gotoDefaultPosition = function(self)
             options.panel = "frames"
