@@ -6,7 +6,7 @@ cctracker is a music tracker program written for the CC: Tweaked mod for Minecra
 
 You can easily download it on your ComputerCraft computer with this command:
 
-`pastebin get uqL9UtAK cctracker`
+`wget https://raw.githubusercontent.com/James-Dumas/cctracker/master/cctracker.lua cctracker`
 
 ## Manual
 Songs are made up of frames, and frames are made up of rows and channels.
@@ -34,6 +34,8 @@ Instrument and note values are displayed as hexadecimal digits: [0123456789ABCDE
 
 The instrument values correspond the the 16 note block instruments in the latest version of the game.
 
+The effects bar is the column to the left of the editor. When an effect is placed it will be applied when the notes on that row are played during playback. For effects that require a value, you can type in hexadecimal digits next to the symbol.
+
 ### Controls
 
 #### global
@@ -59,7 +61,6 @@ The instrument values correspond the the 16 note block instruments in the latest
   * right/left bracket - transpose selection up/down octave
 * shift + V - paste clipboard at cursor
 * shift + M - mute/unmute current channel
-* shift + J - set/unset current row as jump point
 * shift + [0123456789ABCDEF] - select instrument
 * various keyboard keys - enter note / instrument / volume
   * the 'A' key is the lowest F#, 'Z' key is G, 'S' key is G#, 'X' key is A, etc.
@@ -72,3 +73,11 @@ The instrument values correspond the the 16 note block instruments in the latest
 * left/right - change frame at current index
 * I - insert new frame before current frame
 * delete - delete current frame
+#### effects bar
+* n - skip to next frame
+* s - stop song
+* t - change speed
+  * value is the speed to set to in hexadecimal
+  * set to 00 to reset to the song's default speed
+* j - jump to frame
+ * value is the index of the frame to jump to in hexadecimal
