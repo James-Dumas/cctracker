@@ -455,11 +455,12 @@ function playSong()
     local t = 0.001 -- one tick
     local time = os.time()
     local alarmTime = time + t
+    local frame = nil
     os.setAlarm(alarmTime)
     while not options.stop do
         os.pullEvent("alarm")
         redrawPanels()
-        local frame = song:getFrameAt(options.currentFrame)
+        frame = song:getFrameAt(options.currentFrame)
         playNotes(frame.notes[options.currentRow])
         if frame.effects[options.currentRow] ~= nil then
             local effect = frame.effects[options.currentRow]
