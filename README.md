@@ -38,12 +38,12 @@ The effects bar is the column to the left of the editor. When an effect is place
 
 ### Controls
 
-#### global
+#### Global
 * shift + arrow keys - switch panel
-#### top panel
+#### Top Panel
 * arrow keys - choose option
 * enter/space - select option
-#### editor panel
+#### Editor Panel
 * arrow keys - move cursor
 * space - play from current frame
 * shift + space - play from first frame
@@ -68,16 +68,16 @@ The effects bar is the column to the left of the editor. When an effect is place
   * for instrument and volume just press one of [0123456789ABCDEF]
 * backspace - delete note
 * delete - delete note and move down a row
-#### frames panel
+#### Frames Panel
 * up/down - change frame index
 * left/right - change frame at current index
 * I - insert new frame before current frame
 * delete - delete current frame
-#### effects bar
-* n - skip to next frame
-* s - stop song
-* t - change speed
+### Effects
+* N - skip to next frame
+* S - stop song
+* T - change speed
   * value is the speed to set to in hexadecimal
   * set to 00 to reset to the song's default speed
-* j - jump to frame
+* J - jump to frame
  * value is the index of the frame to jump to in hexadecimal
