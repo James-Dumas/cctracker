@@ -459,8 +459,8 @@ function playSong()
     while not options.stop do
         os.pullEvent("alarm")
         redrawPanels()
-        playNotes(frame.notes[options.currentRow])
         local frame = song:getFrameAt(options.currentFrame)
+        playNotes(frame.notes[options.currentRow])
         if frame.effects[options.currentRow] ~= nil then
             local effect = frame.effects[options.currentRow]
             if effect.type == "next" then
