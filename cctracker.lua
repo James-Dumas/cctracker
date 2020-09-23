@@ -459,6 +459,7 @@ function playSong()
     while not options.stop do
         os.pullEvent("alarm")
         redrawPanels()
+        playNotes(frame.notes[options.currentRow])
         local frame = song:getFrameAt(options.currentFrame)
         if frame.effects[options.currentRow] ~= nil then
             local effect = frame.effects[options.currentRow]
@@ -485,7 +486,6 @@ function playSong()
         time = os.time()
         alarmTime = (time + t * playSpeed) % 24
         os.setAlarm(alarmTime)
-        playNotes(frame.notes[options.currentRow])
         stepRow()
     end
     stepRow(true)
