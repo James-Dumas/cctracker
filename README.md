@@ -80,4 +80,4 @@ The effects bar is the column to the left of the editor. When an effect is place
   * value is the speed to set to in hexadecimal
   * set to 00 to reset to the song's default speed
 * J - jump to frame
- * value is the index of the frame to jump to in hexadecimal
+  * value is the index of the frame to jump to in hexadecimal
