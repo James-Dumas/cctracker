@@ -50,6 +50,7 @@ options = {
     currentChannel = 1,
     currentItem = "note",
     currentInstrument = 16,
+    currentVolume = 15,
     onEffectsBar = false,
 
     minFrames = 1,
@@ -1078,6 +1079,7 @@ function init()
                         elseif param == keys.c then
                             clipboard = selection.data
                             clearSelection()
+                            self:autoSetCursorPos()
                         elseif param == keys.x then
                             clipboard = selection.data
                             local notes = song:getFrameAt(options.currentFrame).notes
@@ -1087,6 +1089,7 @@ function init()
                                 end
                             end
                             clearSelection()
+                            self:autoSetCursorPos()
                         elseif param == keys.delete or param == keys.backspace then
                             local notes = song:getFrameAt(options.currentFrame).notes
                             for r = selection.r1, selection.r2 do
@@ -1095,6 +1098,7 @@ function init()
                                 end
                             end
                             clearSelection()
+                            self:autoSetCursorPos()
                         elseif param == keys.a then
                             selection.ir = 1
                             selection.ic = 1
@@ -1208,10 +1212,10 @@ function init()
                                     if note ~= nil then
                                         note[1] = pitch
                                     else
-                                        row[options.currentChannel] = {pitch, options.currentInstrument, 15}
+                                        row[options.currentChannel] = {pitch, options.currentInstrument, options.currentVolume}
                                     end
                                     stepRow()
-                                    playNotes({{row[options.currentChannel][1], row[options.currentChannel][2], 13}})
+                                    playNotes({{row[options.currentChannel][1], row[options.currentChannel][2], options.currentVolume}})
                                     self.needsRedraw = true
                                 end
                             elseif options.currentItem == "instrument" and hexDigitSet[keys.getName(param)] then
@@ -1256,7 +1260,11 @@ function init()
             self.window.setTextColor(colors.white)
             self.window.setCursorPos(1, 2)
             self.window.write("-----")
-            for windowRow = 3, 16 do
+            self.window.setCursorPos(1, 15)
+            self.window.write("-----")
+            self.window.setCursorPos(1, 16)
+            self.window.blit("Vol:" .. dec2hex(options.currentVolume), "00083", "fffff")
+            for windowRow = 3, 14 do
                 local dispFrame = windowRow - 9 + options.currentFrame
                 if dispFrame >= 0 and dispFrame < options.frames then
                     self.window.setCursorPos(1, windowRow)
