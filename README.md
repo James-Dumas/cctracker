@@ -57,6 +57,7 @@ The effects bar is the column to the left of the editor. When an effect is place
   * Z - select entire channel
   * A - select entire frame
   * R - replace instrument with current instrument
+  * L - replace volume with current volume
   * equals/minus - transpose selection up/down half step
   * right/left bracket - transpose selection up/down octave
 * shift + V - paste clipboard at cursor

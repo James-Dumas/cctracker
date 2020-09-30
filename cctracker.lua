@@ -1139,6 +1139,17 @@ function init()
                                 end
                             end
                             updateSelection()
+                        elseif param == keys.l then
+                            local notes = song:getFrameAt(options.currentFrame).notes
+                            for r = selection.r1, selection.r2 do
+                                for c = selection.c1, selection.c2 do
+                                    local note = notes[r][c]       
+                                    if note ~= nil then
+                                        note[3] = options.currentVolume
+                                    end
+                                end
+                            end
+                            updateSelection()
                         elseif param == keys.equals then
                             local notes = song:getFrameAt(options.currentFrame).notes
                             for r = selection.r1, selection.r2 do
