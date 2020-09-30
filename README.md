@@ -61,6 +61,7 @@ The effects bar is the column to the left of the editor. When an effect is place
   * right/left bracket - transpose selection up/down octave
 * shift + V - paste clipboard at cursor
 * shift + M - mute/unmute current channel
+* shift + L - go to volume selection
 * shift + [0123456789ABCDEF] - select instrument
 * various keyboard keys - enter note / instrument / volume
   * the 'A' key is the lowest F#, 'Z' key is G, 'S' key is G#, 'X' key is A, etc.

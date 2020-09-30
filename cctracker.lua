@@ -176,6 +176,19 @@ function getDisplayNote(note)
     return noteNames[note[1]] .. octave
 end
 
+function setVolume()
+    term.setCursorPos(width, height)
+    while true do
+        local event, key = os.pullEvent("key")
+        if hexDigitSet[keys.getName(key)] then
+            options.currentVolume = hex2dec(hexDigitMap[keys.getName(key)])
+            break
+        end
+    end
+    options.shift = false
+    panels.frames.needsRedraw = true
+end
+
 function isEmptyNestedTable(t)
     allEmpty = true
     for k, v in pairs(t) do
@@ -1045,6 +1058,9 @@ function init()
                     elseif not options.selecting and param == keys.m then
                         muted[options.currentChannel] = not muted[options.currentChannel]
                         self.needsRedraw = true
+                    elseif not options.selecting and param == keys.l then
+                        setVolume()
+                        self:autoSetCursorPos()
                     elseif param == keys.s then
                         if options.selecting then
                             clearSelection()
@@ -1215,7 +1231,7 @@ function init()
                                         row[options.currentChannel] = {pitch, options.currentInstrument, options.currentVolume}
                                     end
                                     stepRow()
-                                    playNotes({{row[options.currentChannel][1], row[options.currentChannel][2], options.currentVolume}})
+                                    playNotes({{row[options.currentChannel][1], row[options.currentChannel][2], 13}})
                                     self.needsRedraw = true
                                 end
                             elseif options.currentItem == "instrument" and hexDigitSet[keys.getName(param)] then
