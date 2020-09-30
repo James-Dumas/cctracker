@@ -481,13 +481,11 @@ function playSong()
     panels.editor.needsRedraw = true
     redrawPanels()
     local playSpeed = options.speed
-    local t = 0.001 -- one tick
-    local time = os.time()
-    local alarmTime = time + t
+    local t = 0.05 -- one tick
     local frame = nil
-    os.setAlarm(alarmTime)
+    os.startTimer(0)
     while not options.stop do
-        os.pullEvent("alarm")
+        os.pullEvent("timer")
         redrawPanels()
         frame = song:getFrameAt(options.currentFrame)
         playNotes(frame.notes[options.currentRow])
@@ -513,9 +511,7 @@ function playSong()
                 end
             end
         end
-        time = os.time()
-        alarmTime = (time + t * playSpeed) % 24
-        os.setAlarm(alarmTime)
+        os.startTimer(t * playSpeed)
         stepRow()
     end
     stepRow(true)
