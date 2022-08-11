@@ -284,7 +284,8 @@ function stepRow(up)
 end
 
 function saveSong(filename)
-    local outfile = io.open(filename, "w")
+    local outfile = io.open(shell.resolve(filename), "w")
+    assert(outfile, "Could not open file " .. shell.resolve(filename) .. " for writing")
     outfile:write("cctracker format v" .. saveFormatVer .. "\n")
     outfile:write(options.name .. "\n")
     outfile:write(options.speed .. "\n")
@@ -333,7 +334,8 @@ function saveSong(filename)
 end
 
 function loadSong(filename)
-    local infile = io.open(filename, "r")
+    local infile = io.open(shell.resolve(filename), "r")
+    assert(infile, "Could not open file " .. shell.resolve(filename) .. " for reading")
     local lineNum = 1
     local formatVer = 1
     local status = {
@@ -485,7 +487,7 @@ function exportSong(filename, loops)
 end
 
 function isOkFilename(filepath)
-    return string.len(filepath) > 0 and string.match(filepath, " ") == nil and string.sub(filepath, -1) ~= "/" and not fs.isDir(filepath)
+    return string.len(filepath) > 0 and string.match(filepath, " ") == nil and string.sub(filepath, -1) ~= "/" and not fs.isDir(shell.resolve(filepath))
 end
 
 function playSong()
@@ -1499,7 +1501,7 @@ function init()
             self.window.write("Load file: " .. options.tempFilename)
             self.window.setCursorPos(17, 11)
             local colorString = "5555"
-            if(not isOkFilename(options.tempFilename) or not fs.exists(options.tempFilename)) then
+            if(not isOkFilename(options.tempFilename) or not fs.exists(shell.resolve(options.tempFilename))) then
                 colorString = "8888"
             end
             self.window.blit("LOAD", colorString, "ffff")
@@ -1529,7 +1531,7 @@ function init()
             else -- y = 11
                 if x == 17 then -- LOAD
                     if event == "key" then
-                        if (param == keys.enter or param == keys.space) and isOkFilename(options.tempFilename) and fs.exists(options.tempFilename) then
+                        if (param == keys.enter or param == keys.space) and isOkFilename(options.tempFilename) and fs.exists(shell.resolve(options.tempFilename)) then
                             result = loadSong(options.tempFilename)
                             if result ~= nil then
                                 self.errorMsg = result
