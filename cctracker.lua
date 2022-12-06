@@ -72,7 +72,8 @@ options = {
     exit = false,
     shift = false,
     stop = false,
-    selecting = false
+    selecting = false,
+    saved = true
 }
 
 noteKeys = {
@@ -201,9 +202,9 @@ function isEmptyNestedTable(t)
     return allEmpty
 end
 
-function playNotes(notes)
+function playNotes(notes, ignoreMute)
     for i, note in pairs(notes) do
-        if not muted[i] and instruments[note[2]][4] then
+        if (ignoreMute or not muted[i]) and instruments[note[2]][4] then
             speaker.playNote(instruments[note[2]][1], (note[3] + 1) / 16, note[1])
         end
     end
@@ -714,6 +715,7 @@ function init()
                             if ok then
                                 self.window.setCursorPos(x - 1, y)
                                 self.needsRedraw = true
+                                options.saved = false
                             end
                         elseif param == keys.right then
                             self.window.setCursorPos(51, 1)
@@ -724,6 +726,7 @@ function init()
                         options.name = options.name .. param
                         self.window.setCursorPos(x + 1, y)
                         self.needsRedraw = true
+                        options.saved = false
                     end
                 elseif x > 48 then -- editing speed
                     if event == "key" then
@@ -733,6 +736,7 @@ function init()
                             if ok then
                                 self.window.setCursorPos(x - 1, y)
                                 self.needsRedraw = true
+                                options.saved = false
                             end
                         elseif param == keys.left then
                             updateSpeed()
@@ -747,6 +751,7 @@ function init()
                         options.editingSpeed = tonumber((options.editingSpeed or options.speed) .. param)
                         self.window.setCursorPos(49 + string.len(options.editingSpeed), y)
                         self.needsRedraw = true
+                        options.saved = false
                     end
                 end
             else -- y = 2
@@ -763,7 +768,14 @@ function init()
                 elseif x == 7 then -- LOAD
                     if event == "key" then
                         if param == keys.enter or param == keys.space then
-                            panels.loadFile:gotoDefaultPosition()
+                            if options.saved then
+                                panels.loadFile:gotoDefaultPosition()
+                            else
+                                panels.confirmClose.confirmAction = function()
+                                    panels.loadFile:gotoDefaultPosition()
+                                end
+                                panels.confirmClose:gotoDefaultPosition()
+                            end
                         elseif param == keys.left then
                             self.window.setCursorPos(2, 2)
                         elseif param == keys.right then
@@ -799,7 +811,14 @@ function init()
                 elseif x == 24 then -- QUIT
                     if event == "key" then
                         if param == keys.enter or param == keys.space then
-                            options.exit = true
+                            if options.saved then
+                                options.exit = true
+                            else
+                                panels.confirmClose.confirmAction = function()
+                                    options.exit = true
+                                end
+                                panels.confirmClose:gotoDefaultPosition()
+                            end
                         elseif param == keys.left then
                             self.window.setCursorPos(19, 2)
                         elseif param == keys.right then
@@ -816,6 +835,7 @@ function init()
                             if ok then
                                 self.window.setCursorPos(x - 1, y)
                                 self.needsRedraw = true
+                                options.saved = false
                             end
                         elseif param == keys.left then
                             updateFrames()
@@ -834,6 +854,7 @@ function init()
                         options.editingFrames = tonumber((options.editingFrames or options.frames) .. param)
                         self.window.setCursorPos(38 + string.len(options.editingFrames), y)
                         self.needsRedraw = true
+                        options.saved = false
                     end
                 elseif x > 48 then -- editing rows
                     if event == "key" then
@@ -843,6 +864,7 @@ function init()
                             if ok then
                                 self.window.setCursorPos(x - 1, y)
                                 self.needsRedraw = true
+                                options.saved = false
                             end
                         elseif param == keys.left then
                             updateRows()
@@ -857,6 +879,7 @@ function init()
                         options.editingRows = tonumber((options.editingRows or options.rows) .. param)
                         self.window.setCursorPos(49 + string.len(options.editingRows), y)
                         self.needsRedraw = true
+                        options.saved = false
                     end
                 end
             end
@@ -995,23 +1018,28 @@ function init()
                             stepRow()
                         end
                         self.needsRedraw = true
+                        options.saved = false
                         self:autoSetCursorPos()
                     elseif x == 1 then
                         if param == keys.n then
                             effectTable[options.currentRow] = {type="next"}
                             self.needsRedraw = true
+                            options.saved = false
                             stepRow()
                         elseif param == keys.s then
                             effectTable[options.currentRow] = {type="stop"}
                             self.needsRedraw = true
+                            options.saved = false
                             stepRow()
                         elseif param == keys.t then
                             effectTable[options.currentRow] = {type="speed", value=0}
                             self.needsRedraw = true
+                            options.saved = false
                             self.window.setCursorPos(2, 9)
                         elseif param == keys.j then
                             effectTable[options.currentRow] = {type="jump", value=0}
                             self.needsRedraw = true
+                            options.saved = false
                             self.window.setCursorPos(2, 9)
                         end
                     elseif effectHere ~= nil and effectHere.value ~= nil and x > 1 and hexDigitSet[keys.getName(param)] then
@@ -1031,6 +1059,7 @@ function init()
                             effectHere.value = options.maxSpeed
                         end
                         self.needsRedraw = true
+                        options.saved = false
                     end
                 end
             elseif options.shift then
@@ -1057,9 +1086,11 @@ function init()
                         end
                         self:autoSetCursorPos()
                         self.needsRedraw = true
+                        options.saved = false
                     elseif not options.selecting and param == keys.m then
                         muted[options.currentChannel] = not muted[options.currentChannel]
                         self.needsRedraw = true
+                        options.saved = false
                     elseif not options.selecting and param == keys.l then
                         setVolume()
                         self:autoSetCursorPos()
@@ -1107,6 +1138,7 @@ function init()
                                 end
                             end
                             clearSelection()
+                            options.saved = false
                             self:autoSetCursorPos()
                         elseif param == keys.delete or param == keys.backspace then
                             local notes = song:getFrameAt(options.currentFrame).notes
@@ -1115,6 +1147,7 @@ function init()
                                     notes[r][c] = nil
                                 end
                             end
+                            options.saved = false
                             clearSelection()
                             self:autoSetCursorPos()
                         elseif param == keys.a then
@@ -1140,6 +1173,7 @@ function init()
                                     end
                                 end
                             end
+                            options.saved = false
                             updateSelection()
                         elseif param == keys.l then
                             local notes = song:getFrameAt(options.currentFrame).notes
@@ -1151,6 +1185,7 @@ function init()
                                     end
                                 end
                             end
+                            options.saved = false
                             updateSelection()
                         elseif param == keys.equals then
                             local notes = song:getFrameAt(options.currentFrame).notes
@@ -1162,6 +1197,7 @@ function init()
                                     end
                                 end
                             end
+                            options.saved = false
                             updateSelection()
                         elseif param == keys.minus then
                             local notes = song:getFrameAt(options.currentFrame).notes
@@ -1173,6 +1209,7 @@ function init()
                                     end
                                 end
                             end
+                            options.saved = false
                             updateSelection()
                         elseif param == keys.rightBracket then
                             local notes = song:getFrameAt(options.currentFrame).notes
@@ -1184,6 +1221,7 @@ function init()
                                     end
                                 end
                             end
+                            options.saved = false
                             updateSelection()
                         elseif param == keys.leftBracket then
                             local notes = song:getFrameAt(options.currentFrame).notes
@@ -1195,6 +1233,7 @@ function init()
                                     end
                                 end
                             end
+                            options.saved = false
                             updateSelection()
                         end
                     else
@@ -1232,6 +1271,7 @@ function init()
                                 stepRow()
                             end
                             self.needsRedraw = true
+                            options.saved = false
                         else
                             if options.currentItem == "note" then
                                 pitch = noteKeys[keys.getName(param)]
@@ -1244,8 +1284,9 @@ function init()
                                         row[options.currentChannel] = {pitch, options.currentInstrument, options.currentVolume}
                                     end
                                     stepRow()
-                                    playNotes({{row[options.currentChannel][1], row[options.currentChannel][2], 13}})
+                                    playNotes({{row[options.currentChannel][1], row[options.currentChannel][2], 13}}, true)
                                     self.needsRedraw = true
+                                    options.saved = false
                                 end
                             elseif options.currentItem == "instrument" and hexDigitSet[keys.getName(param)] then
                                 local note = song:getFrameAt(options.currentFrame).notes[options.currentRow][options.currentChannel]
@@ -1256,6 +1297,7 @@ function init()
                                     stepRow()
                                     panels.frames.needsRedraw = true
                                     self.needsRedraw = true
+                                    options.saved = false
                                 end
                             elseif options.currentItem == "volume" and hexDigitSet[keys.getName(param)] then
                                 local note = song:getFrameAt(options.currentFrame).notes[options.currentRow][options.currentChannel]
@@ -1263,6 +1305,7 @@ function init()
                                     note[3] = hex2dec(hexDigitMap[keys.getName(param)])
                                     stepRow()
                                     self.needsRedraw = true
+                                    options.saved = false
                                 end
                             end
                         end
@@ -1338,6 +1381,7 @@ function init()
                         if song.frames[song.order[options.currentFrame]] == nil then
                             song.frames[song.order[options.currentFrame]] = newFrame()
                         end
+                        options.saved = false
                         self.needsRedraw = true
                         panels.editor.needsRedraw = true
                     elseif param == keys.right and song.order[options.currentFrame] < 255 then
@@ -1345,6 +1389,7 @@ function init()
                         if song.frames[song.order[options.currentFrame]] == nil then
                             song.frames[song.order[options.currentFrame]] = newFrame()
                         end
+                        options.saved = false
                         self.needsRedraw = true
                         panels.editor.needsRedraw = true
                     elseif param == keys.i and options.frames < options.maxFrames then
@@ -1353,6 +1398,7 @@ function init()
                         end
                         song.order[options.currentFrame] = 0
                         options.frames = options.frames + 1
+                        options.saved = false
                         self.needsRedraw = true
                         panels.header.needsRedraw = true
                         panels.editor.needsRedraw = true
@@ -1365,6 +1411,7 @@ function init()
                             options.currentFrame = options.currentFrame - 1
                         end
                         options.frames = options.frames - 1
+                        options.saved = false
                         self.needsRedraw = true
                         panels.header.needsRedraw = true
                         panels.editor.needsRedraw = true
@@ -1439,6 +1486,7 @@ function init()
                     if event == "key" then
                         if (param == keys.enter or param == keys.space) and isOkFilename(options.filename) then
                             saveSong(options.filename)
+                            options.saved = true
                             self:goBack()
                         elseif param == keys.right then
                             self.window.setCursorPos(32, 11)
@@ -1539,6 +1587,7 @@ function init()
                             else
                                 options.filename = options.tempFilename
                                 options.tempFilename = ""
+                                options.saved = true
                                 self:goBack()
                             end
                         elseif param == keys.right then
@@ -1697,6 +1746,61 @@ function init()
                         elseif param == keys.up then
                             self.window.setCursorPos(7 + string.len(options.exportLoops), 11)
                         end
+                    end
+                end
+            end
+        end
+    }
+    panels.confirmClose = {
+        window = window.create(term.current(), 1, 1, 51, 19),
+        needsRedraw = false,
+        goBack = function(self)
+            self.window.setVisible(false)
+            self.window.clear()
+            panels.header.window.setVisible(true)
+            panels.editor.window.setVisible(true)
+            panels.frames.window.setVisible(true)
+            panels.header.needsRedraw = true
+            panels.editor.needsRedraw = true
+            panels.frames.needsRedraw = true
+            panels.header:gotoDefaultPosition()
+        end,
+        gotoDefaultPosition = function(self)
+            options.panel = "confirmClose"
+            panels.header.window.setVisible(false)
+            panels.editor.window.setVisible(false)
+            panels.frames.window.setVisible(false)
+            self.window.setVisible(true)
+            self.window.setCursorPos(32, 11)
+            self.needsRedraw = true
+        end,
+        redraw = function(self)
+            self.window.clear()
+            self.window.setCursorBlink(false)
+            self.window.setCursorPos(8, 9)
+            self.window.write("Close current track without saving?")
+            self.window.setCursorPos(17, 11)
+            self.window.blit("YES", "888", "fff")
+            self.window.setCursorPos(32, 11)
+            self.window.blit("BACK", "3333", "ffff")
+            self.window.setCursorBlink(true)
+        end,
+        doAction = function(self, event, param)
+            local x, y = self.window.getCursorPos()
+            if x == 17 then -- SAVE
+                if event == "key" then
+                    if param == keys.enter or param == keys.space then
+                        self.confirmAction()
+                    elseif param == keys.right then
+                        self.window.setCursorPos(32, 11)
+                    end
+                end
+            else -- BACK
+                if event == "key" then
+                    if param == keys.enter or param == keys.space then
+                        self:goBack()
+                    elseif param == keys.left then
+                        self.window.setCursorPos(17, 11)
                     end
                 end
             end
